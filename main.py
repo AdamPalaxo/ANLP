@@ -61,9 +61,10 @@ def preprocess(file, tokenizer):
 
 
 # Load saved model or download new one
-def load_model():
+def load_model(trainable=True):
     model = TFBertModel.from_pretrained("bert-base-multilingual-cased")
     model.save_pretrained(save_path)
+    model.trainable = trainable
 
     return model
 
@@ -72,7 +73,7 @@ def load_model():
 # Bert used as the embedding
 # TODO compare sparse_categorical_crossentropy vs categorical_crossentropy
 def train_model(x, y, num_labels, epochs=5, batch_size=128):
-    bert = load_model()
+    bert = load_model(False)
     inputs = Input(shape=(max_length,), dtype=tf.int32)
     embedding = bert(inputs)[1]
     outputs = Dense(num_labels, activation='softmax')(embedding)
