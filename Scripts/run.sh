@@ -15,6 +15,6 @@ module add cuda-10.1
 
 cp -r $DATADIR/ANLP $SCRATCHDIR || { echo >&2 "Error while copying data!"; exit 1; }
 
-python3 main.py 
+python3 main.py
 
 clean_scratch

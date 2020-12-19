@@ -5,6 +5,8 @@ class Label:
         self.text = text
         self.parts = [x for x in text]
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.parts}"
 
+    def get_parts(self):
+        return {k: v for (k, v) in enumerate(self.parts)}

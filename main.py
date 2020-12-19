@@ -1,14 +1,14 @@
 import os
 import numpy as np
 import tensorflow as tf
-from keras.layers import Activation, Dense, Input
+from keras.layers import Dense, Input
 from keras.models import Model
 from keras.optimizers import Adam
 from transformers import BertConfig, TFBertModel, BertTokenizer
 
-from label import Label
 from sample import Sample
 
+category_count = 15
 max_length = 16
 configuration = BertConfig()
 save_path = "Model/"
@@ -72,7 +72,7 @@ def load_model(trainable=True):
 # Train model with given parameters
 # Bert used as the embedding
 # TODO compare sparse_categorical_crossentropy vs categorical_crossentropy
-def train_model(x, y, num_labels, epochs=5, batch_size=128):
+def train_model(x, y, num_labels, epochs=5, batch_size=64):
     bert = load_model(False)
     inputs = Input(shape=(max_length,), dtype=tf.int32)
     embedding = bert(inputs)[1]
@@ -86,9 +86,19 @@ def train_model(x, y, num_labels, epochs=5, batch_size=128):
     return model
 
 
+# Trains multiple models for individual parts of label
+def train_multiple_models(x_train, sub_labels):
+    models = []
+
+    for i in range(category_count):
+        y_train = [label[i] for label in sub_labels]
+        models.append(train_model(x_train, y_train, len(y_train)))
+
+    return models
+
+
 # Predict values from model
 def predict(model: Model, x_test, y_test):
-
     index = model.predict(x_test)
     print(y_test[0])
     print(index)
@@ -96,26 +106,27 @@ def predict(model: Model, x_test, y_test):
     return model.predict(x_test)
 
 
-# Encode label to one hot vector
-def encode_label(label, num_labels):
+# Encodes label to one hot vector
+def encode_label(position, num_labels):
     encoded = [0] * num_labels
-    encoded[label] = 1
+    encoded[position] = 1
     return encoded
 
 
 # Prepares training data
 def prepare_training_data():
     samples, categories, labels = preprocess(data_path + "dev.txt", tokenizer)
-    label2id = {i: label for i, label in enumerate(labels)}
-    id2label = dict(zip(label2id.values(), label2id.keys()))
+    id2label = {i: label for i, label in enumerate(labels)}
+    label2id = dict(zip(id2label.values(), id2label.keys()))
     num_labels = len(labels)
 
     x = []
     y = []
+    sub_labels = []
 
     for sample in samples:
         encoded_token = tokenizer.encode(sample.token)
-        encoded_label = encode_label(id2label[sample.label.text], num_labels)
+        encoded_label = encode_label(label2id[sample.label.text], num_labels)
         padding_length = max_length - len(encoded_token)
 
         # Add padding to align to max length
@@ -124,16 +135,17 @@ def prepare_training_data():
 
         x.append(encoded_token)
         y.append(encoded_label)
+        sub_labels.append(sample.label.get_parts())
 
-    return np.array(x), np.array(y), labels, num_labels
+    return np.array(x), np.array(y), samples, labels, sub_labels, num_labels
 
 
 def main():
     print("Loading data")
-    x_train, y_train, labels, num_labels = prepare_training_data()
+    x_train, y_train, samples, labels, sub_labels, num_labels = prepare_training_data()
     print("Training")
-    model = train_model(x_train, y_train, num_labels)
-    test = predict(model, x_train, y_train)
+    # model = train_model(x_train, y_train, num_labels)
+    sub_models = train_multiple_models(x_train, sub_labels)
 
 
 if __name__ == "__main__":

@@ -12,5 +12,5 @@ class Sample:
         self.label = Label(label)
         self.specification = specification
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.word} - {self.token} -> {self.label.text}"
